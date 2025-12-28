@@ -12,15 +12,10 @@ FROM transacoes
 WHERE DtCriacao >= '2025-08-25' AND DtCriacao < '2025-08-30')
 
 SELECT 
-t2.dia_curso,
-count(DISTINCT t1.IdCliente)
-
-
+    t2.dia_curso,
+    count(DISTINCT t1.IdCliente)
 FROM Clientes_janeiro AS t1
-
 LEFT JOIN Clientes_curso AS t2
 ON t1.IdCliente = t2.IdCliente
-
 GROUP BY t2.dia_curso
-
 ORDER BY dia_curso DESC
