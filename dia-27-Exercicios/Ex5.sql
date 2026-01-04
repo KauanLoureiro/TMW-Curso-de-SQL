@@ -1,6 +1,5 @@
 --Quantidade de transações Acumuladas ao longo do tempo?
 
-
 WITH
 tab1 AS
     (SELECT
