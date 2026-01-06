@@ -143,10 +143,62 @@ pdt_fim AS (
     ON a1.idCliente = a4.idCliente
 
     LEFT JOIN pdt_D7 AS a5
-    ON a1.idCliente = a5.idCliente)
+    ON a1.idCliente = a5.idCliente),
 
-SELECT b1.*, b2.produto_vida, b2.produto_D56, b2.produto_D28, b2.produto_D14, b2.produto_D7
-FROM DF1 AS b1
+tb6 AS (
+    SELECT b1.*, b2.produto_vida, b2.produto_D56, b2.produto_D28, b2.produto_D14, b2.produto_D7
+    FROM DF1 AS b1
 
-LEFT JOIN pdt_fim AS b2
-ON b1.idCliente = b2.idCliente
+    LEFT JOIN pdt_fim AS b2
+    ON b1.idCliente = b2.idCliente),
+
+tb7 AS (
+    SELECT 
+        idCliente,
+        strftime('%w', DtCriacao) AS dia_semana,
+        count(*) AS qtd_transact,
+        row_number() OVER (PARTITION BY IdCliente ORDER BY count(*) DESC) AS rn
+    FROM transacoes
+
+    WHERE julianday('now') - julianday(DtCriacao) <= 28
+
+    GROUP BY idCliente, dia_semana),
+
+tb8 AS (
+    SELECT idCliente , dia_semana
+    FROM tb7
+    WHERE rn = 1),
+
+tb9 AS (
+    SELECT t1.*, 
+    coalesce(t2.dia_semana , 'Sem interacoes') AS dia_semana
+    FROM tb6 AS t1
+
+    LEFT JOIN tb8 AS t2
+    ON t1.idCliente = t2.idCliente),
+
+tb10 AS (
+    SELECT 
+        IdCliente,
+        CASE 
+            WHEN strftime('%H', DtCriacao) BETWEEN '00' AND '06' THEN 'madrugada'
+            WHEN strftime('%H', DtCriacao) BETWEEN '06' AND '12' THEN 'manha'
+            WHEN strftime('%H', DtCriacao) BETWEEN '12' AND '18' THEN 'tarde'
+            WHEN strftime('%H', DtCriacao) BETWEEN '18' AND '24' THEN 'noite' 
+            END AS periodo,
+        count(*) as qtd_transact,
+        row_number() OVER (PARTITION BY IdCliente ORDER BY count(*) DESC) AS rn
+    FROM transacoes
+    WHERE julianday('now') - julianday(DtCriacao) <= 28
+    GROUP BY IdCliente, periodo),
+
+tb11 AS (
+    SELECT t1.*, coalesce(t2.periodo, 'Sem informacao')
+    FROM tb9 AS t1
+
+    LEFT JOIN tb10 AS t2
+    ON t1.IdCliente = t2.idCliente
+    AND t2.rn=1)
+
+SELECT *, 1. * Qtd_transact_D28/Qtd_transact_Life AS Engajamento_D28
+FROM tb11
